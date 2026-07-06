@@ -1,0 +1,153 @@
+# ============================================================
+
+# Threat Detection and Investigation - SPL Queries
+
+# ============================================================
+
+#
+
+# Project: Splunk SIEM Threat Detection
+
+# Dashboard: Threat Detection Dashboard
+
+# Data Sources: Sysmon and Microsoft Defender Event Logs
+
+#
+
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Malware Detected - Microsoft Defender
+
+# ------------------------------------------------------------
+
+index=main source="WinEventLog:Microsoft-Windows-Windows Defender/Operational" EventCode=1116
+| stats count
+
+# ------------------------------------------------------------
+
+# Microsoft Defender Alerts
+
+# ------------------------------------------------------------
+
+index=main source="WinEventLog:Microsoft-Windows-Windows Defender/Operational"
+(EventCode=1116 OR EventCode=1117 OR EventCode=1118)
+| stats count
+
+# ------------------------------------------------------------
+
+# Suspicious PowerShell
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*powershell.exe"
+| stats count by CommandLine
+
+# ------------------------------------------------------------
+
+# Top Suspicious PowerShell Activity
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*powershell.exe"
+| eval Technique=case(
+like(CommandLine,"%-enc%"),"Encoded Command",
+like(CommandLine,"%-EncodedCommand%"),"Encoded Command",
+like(CommandLine,"%Invoke-WebRequest%"),"Download Payload",
+like(CommandLine,"%DownloadString%"),"Download Payload",
+like(CommandLine,"%DownloadFile%"),"Download Payload",
+like(CommandLine,"%Net.WebClient%"),"Web Client Download",
+like(CommandLine,"%FromBase64String%"),"Base64 Decode",
+like(CommandLine,"%IEX%"),"Invoke Expression",
+like(CommandLine,"%Invoke-Expression%"),"Invoke Expression",
+like(CommandLine,"%Start-BitsTransfer%"),"BITS Download",
+like(CommandLine,"%Invoke-Command%"),"Remote Execution",
+like(CommandLine,"%Invoke-Mimikatz%"),"Credential Dumping",
+like(CommandLine,"%Set-MpPreference%"),"Defender Tampering",
+like(CommandLine,"%Add-MpPreference%"),"Defender Tampering",
+like(CommandLine,"%-ExecutionPolicy Bypass%"),"Execution Policy Bypass",
+like(CommandLine,"%-ep bypass%"),"Execution Policy Bypass",
+like(CommandLine,"%-nop%"),"NoProfile",
+like(CommandLine,"%-w hidden%"),"Hidden Window",
+like(CommandLine,"%-WindowStyle Hidden%"),"Hidden Window",
+true(),"Other"
+)
+| stats count by Technique
+| sort -count
+
+# ------------------------------------------------------------
+
+# Top Suspicious CMD Commands
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+(
+Image="*whoami.exe" OR
+Image="*systeminfo.exe" OR
+Image="*ipconfig.exe" OR
+Image="*net.exe" OR
+Image="*net1.exe" OR
+Image="*netstat.exe" OR
+Image="*tasklist.exe" OR
+Image="*nslookup.exe" OR
+Image="*ping.exe" OR
+Image="*tracert.exe" OR
+Image="*arp.exe" OR
+Image="*route.exe" OR
+Image="*hostname.exe" OR
+Image="*wmic.exe" OR
+Image="*reg.exe" OR
+Image="*certutil.exe" OR
+Image="*bitsadmin.exe"
+)
+| stats count by Image
+| sort -count
+
+# ------------------------------------------------------------
+
+# Top Targeted Users
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+(
+Image="*powershell.exe"
+OR Image="*cmd.exe"
+OR Image="*mimikatz*"
+)
+| stats count by User
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Top Affected Hosts
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+(
+Image="*powershell.exe"
+OR Image="*cmd.exe"
+OR Image="*mimikatz*"
+)
+| stats count by Computer
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Threat Investigation Table
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+(
+Image="*powershell.exe"
+OR Image="*cmd.exe"
+OR Image="*mimikatz*"
+)
+| table _time Computer User ParentImage Image CommandLine ProcessGuid
+| sort -_time
