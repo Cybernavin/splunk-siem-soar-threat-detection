@@ -1,0 +1,121 @@
+# ============================================================
+
+# Linux Security Monitoring - SPL Queries
+
+# ============================================================
+
+#
+
+# Project: Splunk SIEM Threat Detection
+
+# Dashboard: Linux Monitoring
+
+# Data Sources: Linux Authentication and System Logs
+
+# Primary Source: /var/log/auth.log
+
+#
+
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Root Login
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log"
+"session opened for user root"
+NOT "cron:session"
+| stats count AS "Root Logins"
+
+# ------------------------------------------------------------
+
+# SSH Successful Login
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log" "Accepted password"
+| stats count AS "SSH Successful Logins"
+
+# ------------------------------------------------------------
+
+# SSH Failed Login
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log" "Failed password"
+| stats count AS "SSH Failed Logins"
+
+# ------------------------------------------------------------
+
+# New User Creation
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log" ("useradd" OR "new user")
+| stats count AS "Users Created"
+
+# ------------------------------------------------------------
+
+# Authentication Timeline
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log"
+("Failed password" OR "Accepted password" OR "Accepted password for root")
+| eval Event=case(
+searchmatch("Failed password"),"Failed Login",
+searchmatch("Accepted password for root"),"Root Login",
+searchmatch("Accepted password"),"Successful Login"
+)
+| timechart span=30m count by Event
+
+# ------------------------------------------------------------
+
+# Top Source IPs
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log"
+("Failed password" OR "Accepted password")
+| rex "from (?<Source_IP>\d+.\d+.\d+.\d+)"
+| stats count by Source_IP
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Top SSH Users
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log"
+("Failed password" OR "Accepted password")
+| rex "(Failed|Accepted) password for (invalid user )?(?<User>\S+)"
+| stats count by User
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# User Creation Events
+
+# ------------------------------------------------------------
+
+index=main source="/var/log/auth.log"
+("useradd" OR "new user")
+| table _time host _raw
+| sort -_time
+
+# ------------------------------------------------------------
+
+# Linux Security Events
+
+# ------------------------------------------------------------
+
+index=main
+(source="/var/log/auth.log" OR source="/var/log/syslog")
+("Failed password" OR "Accepted password" OR "useradd" OR "sudo")
+| table _time host source _raw
+| sort -_time
