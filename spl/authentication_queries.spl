@@ -1,0 +1,149 @@
+# ============================================================
+
+# Windows Authentication Monitoring - SPL Queries
+
+# ============================================================
+
+#
+
+# Project: Splunk SIEM Threat Detection
+
+# Dashboard: Windows Authentication Dashboard
+
+# Data Source: Windows Security Event Logs
+
+# Sourcetype: WinEventLog:Security
+
+#
+
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Successful Logins
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4624
+| stats count AS "Successful Logins"
+
+# ------------------------------------------------------------
+
+# Failed Logins
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| stats count AS "Failed Logins"
+
+# ------------------------------------------------------------
+
+# Locked Accounts
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4740
+| stats count AS "Locked Accounts"
+
+# ------------------------------------------------------------
+
+# Admin Logins
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4672
+| stats count AS "Admin Logins"
+
+# ------------------------------------------------------------
+
+# RDP Logins
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4624 Logon_Type=10
+| stats count AS "RDP Logins"
+
+# ------------------------------------------------------------
+
+# Login Timeline
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" (EventCode=4624 OR EventCode=4625)
+| eval Status=case(
+EventCode=4624,"Successful Login",
+EventCode=4625,"Failed Login"
+)
+| timechart span=30m count by Status
+
+# ------------------------------------------------------------
+
+# Login Type Distribution
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4624
+| eval Login_Type=case(
+Logon_Type=2,"Interactive",
+Logon_Type=3,"Network",
+Logon_Type=4,"Batch",
+Logon_Type=5,"Service",
+Logon_Type=7,"Unlock",
+Logon_Type=8,"Network Cleartext",
+Logon_Type=9,"New Credentials",
+Logon_Type=10,"Remote Desktop",
+Logon_Type=11,"Cached Interactive",
+true(),"Other"
+)
+| stats count by Login_Type
+
+# ------------------------------------------------------------
+
+# Top Failed Users
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| stats count by Account_Name
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Top Source IPs - Failed Logins
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| where Source_Network_Address!="-"
+| stats count by Source_Network_Address
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Admin Login Timeline
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4672
+| timechart span=30m count
+
+# ------------------------------------------------------------
+
+# RDP Login Timeline
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" EventCode=4624 Logon_Type=10
+| timechart span=30m count
+
+# ------------------------------------------------------------
+
+# Recent Authentication Events
+
+# ------------------------------------------------------------
+
+index=main sourcetype="WinEventLog:Security" (EventCode=4624 OR EventCode=4625 OR EventCode=4672 OR EventCode=4740)
+| table _time EventCode Account_Name ComputerName Logon_Type Source_Network_Address
+| sort -_time
