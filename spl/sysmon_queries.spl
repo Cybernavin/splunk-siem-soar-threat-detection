@@ -1,0 +1,136 @@
+# ============================================================
+
+# Windows Process Monitoring (Sysmon) - SPL Queries
+
+# ============================================================
+
+#
+
+# Project: Splunk SIEM Threat Detection
+
+# Dashboard: Windows Process Monitoring (Sysmon)
+
+# Data Source: Sysmon Process Creation Events
+
+# Event ID: 1
+
+#
+
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Total Processes Created
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| stats count AS "Processes Created"
+
+# ------------------------------------------------------------
+
+# PowerShell Executions
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*powershell.exe"
+| stats count AS "PowerShell Executions"
+
+# ------------------------------------------------------------
+
+# CMD Executions
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*cmd.exe"
+| stats count AS "CMD Executions"
+
+# ------------------------------------------------------------
+
+# Unique Users
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| stats dc(User) AS "Unique Users"
+
+# ------------------------------------------------------------
+
+# Unique Hosts
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| stats dc(Computer) AS "Unique Hosts"
+
+# ------------------------------------------------------------
+
+# Process Creation Timeline
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| timechart span=30m count
+
+# ------------------------------------------------------------
+
+# Top 10 Processes
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| stats count by Image
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# PowerShell Executions by User
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*powershell.exe"
+| stats count by User
+| sort -count
+
+# ------------------------------------------------------------
+
+# CMD Executions by User
+
+# ------------------------------------------------------------
+
+index=main EventCode=1 Image="*cmd.exe"
+| stats count by User
+| sort -count
+
+# ------------------------------------------------------------
+
+# Parent Process Distribution
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| stats count by ParentImage
+| sort -count
+| head 10
+
+# ------------------------------------------------------------
+
+# Suspicious LOLBins
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+(Image="*powershell.exe" OR Image="*cmd.exe" OR Image="*certutil.exe" OR Image="*regsvr32.exe" OR Image="*rundll32.exe" OR Image="*mshta.exe" OR Image="*wmic.exe" OR Image="*bitsadmin.exe")
+| stats count by Image
+| sort -count
+
+# ------------------------------------------------------------
+
+# Recent Process Creation Events
+
+# ------------------------------------------------------------
+
+index=main EventCode=1
+| table _time User Computer Image CommandLine ParentImage ProcessGuid ParentProcessGuid
+| sort -_time
