@@ -53,7 +53,7 @@ index=main source="/var/log/auth.log" "Failed password"
 
 # ------------------------------------------------------------
 
-index=main source="/var/log/auth.log" ("useradd" OR "new user")
+index=main host=kali source="/var/log/auth.log" "new user:"
 | stats count AS "Users Created"
 
 # ------------------------------------------------------------
