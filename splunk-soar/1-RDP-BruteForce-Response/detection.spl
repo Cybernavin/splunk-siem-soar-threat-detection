@@ -19,18 +19,9 @@
 # Output:
 # Generates a high-severity alert that can be sent to Splunk SOAR.
 
-index=main sourcetype="WinEventLog:Security" EventCode=4625 LogonType=10
-| stats count AS failed_attempts
-        values(Account_Name) AS targeted_users
-        values(ComputerName) AS destination_host
-        earliest(_time) AS first_attempt
-        latest(_time) AS last_attempt
-        by Source_Network_Address
-| where failed_attempts >= 5
-| eval first_attempt=strftime(first_attempt,"%Y-%m-%d %H:%M:%S")
-| eval last_attempt=strftime(last_attempt,"%Y-%m-%d %H:%M:%S")
-| eval severity="High"
-| eval alert_name="RDP Brute Force Detected"
-| rename Source_Network_Address AS src_ip
-| table alert_name severity src_ip failed_attempts targeted_users destination_host first_attempt last_attempt
-| sort - failed_attempts
+index=main sourcetype="WinEventLog:Security" EventCode=4625 Logon_Type=3
+| bucket _time span=30s
+| stats count values(Source_Network_Address) as src_ip values(Account_Name) as account by host _time
+| where count>=10
+| eval severity="high"
+| table _time host src_ip account count severity
