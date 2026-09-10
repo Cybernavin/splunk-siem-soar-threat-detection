@@ -1,0 +1,27 @@
+###############################################
+# Detection Name : RDP Brute Force Detection
+# Author         : Abhinav Maurya
+# Platform       : Splunk Enterprise
+# MITRE ATT&CK   : T1110.001 - Password Guessing
+# Severity       : High
+# Data Source    : Windows Security Event Logs
+# Event ID       : 4625 (Failed Logon)
+###############################################
+
+# Description:
+# Detects multiple failed Remote Desktop (RDP) authentication attempts
+# from the same source IP within a short period of time.
+#
+# Threshold:
+# - 5 or more failed logins
+# - Within 5 minutes
+#
+# Output:
+# Generates a high-severity alert that can be sent to Splunk SOAR.
+
+index=main sourcetype="WinEventLog:Security" EventCode=4625 Logon_Type=3
+| bucket _time span=30s
+| stats count values(Source_Network_Address) as src_ip values(Account_Name) as account by host _time
+| where count>=10
+| eval severity="high"
+| table _time host src_ip account count severity
