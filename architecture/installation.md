@@ -147,15 +147,3 @@ index=main source="/var/log/auth.log"
 ```
 
 If events are returned, log collection is working correctly.
-
-## Future Improvements
-
-Future versions of this project will include:
-
-* MITRE ATT&CK mapping
-* Improved behavioral detection logic
-* Brute-force detection
-* Persistence monitoring
-* Lateral movement detection
-* Risk-based alerting
-* Detection rule documentation
